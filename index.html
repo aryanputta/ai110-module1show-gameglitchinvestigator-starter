@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Retro Number Guesser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Press Start 2P', monospace;
+      min-height: 100vh;
+      background: linear-gradient(160deg, #4dd9c0 0%, #7eb8e8 45%, #c9a0dc 100%);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HUD bar ───────────────────────────────────────────── */
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: rgba(100, 220, 200, 0.35);
+      backdrop-filter: blur(4px);
+      font-size: 0.6rem;
+    }
+
+    .hud-pill {
+      background: #ffe640;
+      border: 3px solid #222;
+      border-radius: 999px;
+      padding: 6px 18px;
+      font-size: 0.55rem;
+      color: #111;
+      letter-spacing: 1px;
+      box-shadow: 3px 3px 0 #333;
+    }
+
+    /* ── Main stage ────────────────────────────────────────── */
+    .stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      padding: 20px;
+    }
+
+    /* ── Mystery card ──────────────────────────────────────── */
+    .card-wrap {
+      perspective: 800px;
+    }
+
+    .card {
+      width: 160px;
+      height: 120px;
+      background: #ffe640;
+      border: 5px solid #222;
+      border-radius: 8px;
+      box-shadow: 6px 6px 0 #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: #222;
+      transition: transform 0.5s ease;
+      transform-style: preserve-3d;
+      cursor: default;
+    }
+
+    .card.revealed {
+      background: #a8f0c8;
+      animation: popIn 0.35s ease forwards;
+    }
+
+    @keyframes popIn {
+      0%   { transform: scale(0.7) rotateY(90deg); }
+      60%  { transform: scale(1.08) rotateY(-8deg); }
+      100% { transform: scale(1) rotateY(0deg); }
+    }
+
+    /* ── Title ─────────────────────────────────────────────── */
+    .game-title {
+      font-size: 1.1rem;
+      color: #111;
+      text-shadow: 3px 3px 0 rgba(0,0,0,0.25);
+      text-align: center;
+    }
+
+    /* ── Feedback message ──────────────────────────────────── */
+    .feedback {
+      font-size: 0.6rem;
+      min-height: 24px;
+      color: #111;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.3s;
+    }
+
+    .feedback .icon { font-size: 1rem; }
+
+    /* ── Input ─────────────────────────────────────────────── */
+    .guess-input {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.1rem;
+      width: 180px;
+      padding: 14px 18px;
+      border: 4px solid #222;
+      border-radius: 6px;
+      background: #fff;
+      color: #111;
+      text-align: center;
+      outline: none;
+      box-shadow: 4px 4px 0 #333;
+      transition: box-shadow 0.15s;
+    }
+
+    .guess-input:focus {
+      box-shadow: 6px 6px 0 #333;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.7rem;
+      padding: 12px 28px;
+      border: 4px solid #222;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 #333;
+      transition: transform 0.1s, box-shadow 0.1s;
+      letter-spacing: 1px;
+    }
+
+    .btn:active {
+      transform: translate(3px, 3px);
+      box-shadow: 1px 1px 0 #333;
+    }
+
+    .btn-check  { background: #ffe640; color: #111; }
+    .btn-restart {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      font-size: 0.55rem;
+      padding: 10px 18px;
+      background: #ffe640;
+      color: #111;
+    }
+
+    /* Difficulty selector */
+    .diff-select {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.5rem;
+      padding: 8px 12px;
+      border: 3px solid #222;
+      border-radius: 6px;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 #333;
+    }
+
+    /* ── Scanline overlay (retro CRT vibe) ─────────────────── */
+    body::after {
+      content: '';
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.04) 3px,
+        rgba(0,0,0,0.04) 4px
+      );
+      z-index: 9999;
+    }
+
+    /* ── Win / Lose overlay ────────────────────────────────── */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+    .overlay.show { display: flex; }
+
+    .overlay-box {
+      background: #ffe640;
+      border: 6px solid #222;
+      border-radius: 12px;
+      padding: 36px 48px;
+      text-align: center;
+      box-shadow: 8px 8px 0 #333;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .overlay-box h2 { font-size: 1rem; color: #111; }
+    .overlay-box p  { font-size: 0.55rem; color: #333; line-height: 2; }
+  </style>
+</head>
+<body>
+
+  <!-- HUD -->
+  <div class="hud">
+    <span id="hud-min">&#11088; Min attempts: —</span>
+    <span class="hud-pill" id="hud-range">~ Between ? and ? ~</span>
+    <span id="hud-attempts">&#128526; Attempt: 0</span>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage">
+
+    <!-- Mystery card -->
+    <div class="card-wrap">
+      <div class="card" id="mystery-card">?</div>
+    </div>
+
+    <h1 class="game-title">Guess the number!</h1>
+
+    <!-- Difficulty -->
+    <select class="diff-select" id="difficulty" onchange="newGame()">
+      <option value="easy">Easy (0–20)</option>
+      <option value="normal" selected>Normal (0–100)</option>
+      <option value="hard">Hard (0–200)</option>
+    </select>
+
+    <!-- Input -->
+    <input
+      class="guess-input"
+      type="number"
+      id="guess-input"
+      placeholder="0"
+      min="0"
+    />
+
+    <!-- Check button -->
+    <button class="btn btn-check" onclick="checkGuess()">Check</button>
+
+    <!-- Feedback -->
+    <div class="feedback" id="feedback"></div>
+
+  </div>
+
+  <!-- Restart button (fixed) -->
+  <button class="btn btn-restart" onclick="newGame()">Restart</button>
+
+  <!-- Win / Lose overlay -->
+  <div class="overlay" id="overlay">
+    <div class="overlay-box">
+      <h2 id="overlay-title">YOU WIN!</h2>
+      <p id="overlay-body"></p>
+      <button class="btn btn-check" onclick="newGame(); closeOverlay()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────
+    const RANGES = {
+      easy:   [0,  20],
+      normal: [0, 100],
+      hard:   [0, 200],
+    };
+
+    let secret = 0;
+    let attempts = 0;
+    let minAttempts = Infinity;
+    let gameOver = false;
+
+    // ── Init ───────────────────────────────────────────────────
+    function newGame() {
+      const diff = document.getElementById('difficulty').value;
+      const [lo, hi] = RANGES[diff];
+
+      secret   = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+      attempts = 0;
+      gameOver = false;
+
+      document.getElementById('guess-input').value = '';
+      document.getElementById('guess-input').disabled = false;
+      setFeedback('', '');
+      setCard('?', false);
+      updateHUD(lo, hi);
+    }
+
+    // ── Check ──────────────────────────────────────────────────
+    function checkGuess() {
+      if (gameOver) return;
+
+      const raw = document.getElementById('guess-input').value.trim();
+      if (raw === '') {
+        setFeedback('&#9888;', 'Enter a number first!');
+        return;
+      }
+
+      const guess = parseInt(raw, 10);
+      if (isNaN(guess)) {
+        setFeedback('&#9888;', 'That\'s not a valid number.');
+        return;
+      }
+
+      attempts++;
+      updateHUD();
+
+      if (guess === secret) {
+        setCard(secret, true);
+        if (attempts < minAttempts) minAttempts = attempts;
+        updateHUD();
+        document.getElementById('guess-input').disabled = true;
+        gameOver = true;
+        setTimeout(() => {
+          showOverlay(true, `The number was ${secret}. You got it in ${attempts} attempt${attempts !== 1 ? 's' : ''}!`);
+        }, 600);
+      } else if (guess > secret) {
+        setFeedback('&#128308;', 'Go LOWER!');
+        shakeInput();
+      } else {
+        setFeedback('&#128994;', 'Go HIGHER!');
+        shakeInput();
+      }
+    }
+
+    // ── UI helpers ─────────────────────────────────────────────
+    function setCard(content, revealed) {
+      const card = document.getElementById('mystery-card');
+      card.textContent = content;
+      card.classList.toggle('revealed', revealed);
+    }
+
+    function setFeedback(icon, msg) {
+      const el = document.getElementById('feedback');
+      el.innerHTML = icon
+        ? `<span class="icon">${icon}</span> ${msg}`
+        : '';
+    }
+
+    function updateHUD(lo, hi) {
+      const diff = document.getElementById('difficulty').value;
+      const range = RANGES[diff];
+      const low  = lo  !== undefined ? lo  : range[0];
+      const high = hi !== undefined ? hi : range[1];
+
+      document.getElementById('hud-range').textContent =
+        `~ Between ${low} and ${high} ~`;
+      document.getElementById('hud-attempts').textContent =
+        `\u{1F525} Attempt: ${attempts}`;
+      document.getElementById('hud-min').textContent =
+        minAttempts === Infinity
+          ? '\u2B50 Min attempts: \u2014'
+          : `\u2B50 Min attempts: ${minAttempts}`;
+    }
+
+    function shakeInput() {
+      const el = document.getElementById('guess-input');
+      el.style.transition = 'none';
+      el.style.transform  = 'translateX(-6px)';
+      setTimeout(() => { el.style.transform = 'translateX(6px)';  }, 80);
+      setTimeout(() => { el.style.transform = 'translateX(-4px)'; }, 160);
+      setTimeout(() => { el.style.transform = 'translateX(0)';    }, 240);
+    }
+
+    function showOverlay(win, body) {
+      document.getElementById('overlay-title').textContent = win ? 'YOU WIN! \uD83C\uDF89' : 'GAME OVER';
+      document.getElementById('overlay-body').textContent  = body;
+      document.getElementById('overlay').classList.add('show');
+    }
+
+    function closeOverlay() {
+      document.getElementById('overlay').classList.remove('show');
+    }
+
+    // Allow Enter key to submit
+    document.getElementById('guess-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') checkGuess();
+    });
+
+    // ── Start ──────────────────────────────────────────────────
+    newGame();
+  </script>
+</body>
+</html>
