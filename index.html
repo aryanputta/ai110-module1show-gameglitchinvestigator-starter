@@ -283,6 +283,7 @@
       const [lo, hi] = RANGES[diff];
 
       secret   = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+      window._secret = secret; // exposed for automated testing / screenshots
       attempts = 0;
       gameOver = false;
 
