@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit:*)",
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m pytest tests/ -v)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(GIT_AUTHOR_NAME=\"Srini\" GIT_AUTHOR_EMAIL=\"srini@example.com\" GIT_COMMITTER_NAME=\"Srini\" GIT_COMMITTER_EMAIL=\"srini@example.com\" git commit -m \"Add final project: The Vault — AI-assisted number cracking game\")",
+      "Bash(find \"/Users/srini/Downloads/ai110-module1show-gameglitchinvestigator-starter-main 2/.git\" -name \"*.lock\" -delete)"
+    ]
+  }
+}
